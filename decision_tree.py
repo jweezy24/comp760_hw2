@@ -2,30 +2,32 @@ import numpy as np
 from data_parser import *
 import matplotlib.pyplot as plt
 
-def calculate_entropy(data):
-    probs = [0,0]
+def calculate_entropy(data,condition=2):
+    probs = {}
     n = len(data)
-    for x1,x2,y in data:
-        probs[y] += 1
 
     
-    if n == 0:
-        probs = [1,1]
-    else:
-        probs[0]/=n
-        probs[1]/=n
+    for x1,x2,y in data:
+        if condition == 0:
+            if x1 not in probs.keys():
+                probs[x1] = 1
+            else:
+                probs[x1] += 1
+        elif condition == 1:
+            if x2 not in probs.keys():
+                probs[x2] = 1
+            else:
+                probs[x2] += 1
+        elif condition == 2:
+            if y not in probs.keys():
+                probs[y] = 1
+            else:
+                probs[y] += 1
 
-    # print(probs)
-    if probs[0] > 0 and probs[1] > 0:
-        entropy = probs[0]*np.log2(probs[0]) + probs[1]*np.log2(probs[1])
-    elif probs[0] == 0 and probs[1] > 0:
-        entropy = 0 + probs[1]*np.log2(probs[1])
-    elif probs[1] == 0 and probs[0] > 0:
-        entropy = probs[0]*np.log2(probs[0]) + 0
-    elif probs[0] == 0 and probs[1] == 0:
-        entropy = 0
-    else:
-        raise("Negative value encountered")
+    entropy = 0
+    for key in probs.keys():
+        p = probs[key]/n
+        entropy += (p)*np.log2(p) 
         
     return -entropy
 
@@ -35,10 +37,10 @@ def parent_child_ratio(child,parent):
     else:
         return len(child)/len(parent)
 
-def information_gain(parent,left,right,feature,event):
-    E_parent = calculate_entropy(parent)
-    E_right = calculate_entropy(right)
-    E_left = calculate_entropy(left)
+def information_gain(parent,left,right,event,feature=2):
+    E_parent = calculate_entropy(parent,feature)
+    E_right = calculate_entropy(right,feature)
+    E_left = calculate_entropy(left,feature)
 
     rp = parent_child_ratio(right,parent)
     lp = parent_child_ratio(left,parent)
@@ -47,9 +49,8 @@ def information_gain(parent,left,right,feature,event):
 
     
     gain = E_parent - E_split
-    
-    # print(f"Entropies:\n Parent\t{E_parent}\tLeft\t{E_left}\tRight{E_right}")
-    # print(f"USING FEATURE {feature} left = {left}\t right = {right}")
+
+
     if lp == 0:
         lp=1
     if rp == 0:
@@ -62,9 +63,13 @@ def information_gain(parent,left,right,feature,event):
 
     entropy_of_event = - (occs/len(parent) * np.log2(occs/len(parent))) 
 
-    ratio = gain/entropy_of_event
+    if entropy_of_event == 0:
+        ratio = 0
+    else:
+        ratio = gain/entropy_of_event
 
-    # print(f"INFORMATION GAIN RATIO: {ratio}\tUSING FEATURE {feature}\t left = {left}\t right = {right}")
+    # print(f"SPLIT CANIDATE = {event}\n IGR = ({E_parent} - {E_split}) / {entropy_of_event} = {ratio}")
+
     return ratio 
 
 def find_split(data,force_node=False,force_ind=0):
@@ -72,6 +77,7 @@ def find_split(data,force_node=False,force_ind=0):
     root_pt = (0,0,-1)
     l=[]
     r=[]
+    max_dim = 0
 
     if force_node:
         left = []
@@ -82,21 +88,18 @@ def find_split(data,force_node=False,force_ind=0):
             right = []
 
             for j,d in enumerate(data):
-                x1,x2,y = d
+                
                 if j == force_node:
                     continue
-
                 
-                if k == 0 and x1 >= p[k]:
-                    left.append( (x1,x2,y) )
-                elif k == 1 and x2 >= p[k]:
-                    left.append( (x1,x2,y) )
-                elif k == 0 and x1 < p[k]:
-                    right.append( (x1,x2,y) )
-                elif k == 1 and x2 < p[k]:
-                    right.append( (x1,x2,y) )
+                if d[k] >= p[k]:
+                    left.append(d)
+                elif d[k] < p[k]:
+                    right.append(d)
+                
+                
             
-            tmp_igr = information_gain(data,left,right,k,p)
+            tmp_igr = information_gain(data,left,right,p)
     
             if tmp_igr > max_igr:
                 max_igr = tmp_igr
@@ -121,48 +124,42 @@ def find_split(data,force_node=False,force_ind=0):
             right = []
 
             for j,d in enumerate(data):
-                x1,x2,y = d
-                # if i == j:
-                #     continue
 
-                if k == 0 and x1 >= p[k]:
-                    left.append( (x1,x2,y) )
-                elif k == 1 and x2 >= p[k]:
-                    left.append( (x1,x2,y) )
-                elif k == 0 and x1 < p[k]:
-                    right.append( (x1,x2,y) )
-                elif k == 1 and x2 < p[k]:
-                    right.append( (x1,x2,y) )
+                if d[k] >= p[k]:
+                    left.append(d)
+                elif d[k] < p[k]:
+                    right.append(d)
 
             
-            # if len(left) == 0 or len(right) == 0:
-            #     continue
             
-            
-            tmp_igr = information_gain(data,left,right,k,p)
-            # print(tmp_igr,k)
+            tmp_igr = information_gain(data,left,right,p)
+
 
             if tmp_igr > max_igr:
                 max_igr = tmp_igr
                 root_pt = p
                 l=left
                 r=right
-                feat = k
+                max_dim = k
     
-    return root_pt,max_igr,l,r,k
+    return root_pt,max_igr,l,r,max_dim
 
 def iterate_tree(root,level=0):
-    ret = "\t"*level+str(root.val)+"\n"
-    ret+="\t"*(level)+f"Condition x_{root.dim} >= {root.val[root.dim]}"+"\n"
-    if root.left != None:
+    if level == 0:
+        ret = "\t"*level+"ROOT: "+str(root.val)+f"Condition x_{root.dim} >= {root.val[root.dim]}\n" 
+    else:  
+        ret = "\t"*level+str(root.val)+f"Condition x_{root.dim} >= {root.val[root.dim]}\n" 
+    
+
+    if root.left.val != None:
         ret+=iterate_tree(root.left, level+1 )
     else:
-        ret+="\t"*(level+1)+f"Left x_{root.dim} >= {root.val[root.dim]} LEAF:{root.predict()}"+"\n"
+        ret+="\t"*(level+1)+f"Left x_{root.dim} >= {root.val[root.dim]} LEAF:{root.left.predict()}"+"\n"
     
-    if root.right != None:
+    if root.right.val != None:
         ret+=iterate_tree(root.right, level+1 )
     else:
-        pred = abs(root.predict()-1)
+        pred = root.right.predict()
         ret+="\t"*(level+1)+f"Right x_{root.dim} < {root.val[root.dim]} LEAF:{pred}"+"\n"
         
     
@@ -182,13 +179,19 @@ class Node():
     def set_right(self,n):
         self.right = n
 
+    def get_condition(self):
+        if self.val != None:
+            print(f"Root:{self.val}\n Left x_{self.dim} >= {self.val[self.dim]}  \t Right x_{self.dim} < {self.val[self.dim]} ")
+        else:
+            print(f"LEAF NODE WITH POOL{self.pool}")
+
     def predict(self):
         vals = [0,0]
         for x1,x2,y in self.pool:
             vals[y] +=1
 
         #vals[self.val[-1]]+=1
-        print(vals,self.pool)
+        # print(vals,self.pool)
         if vals[0] > vals[1]:
             return 0
         elif vals[0] < vals[1]:
@@ -205,57 +208,56 @@ class DecisionTree():
         else:
             root_node_0,igr,l,r,k =  find_split(data)
 
-        print(f"IGR: {igr} {l}{r}")
+        print(f"IGR: {igr}\n LEFT:{l}\tRIGHT:{r} \t with ROOT:{root_node_0}")
 
         self.root = Node(root_node_0,k,data)
-        self.build_tree(self.root,l,r)
+        self.build_tree(self.root,l,r,k)
 
         if name != "":
             print(f"Finished with {name}")
 
 
-    def build_tree(self,root,l,r):
+    def build_tree(self,root,l,r,feat):
         
         stop_l = False
         stop_r = False
         if len(r) == 0:
-            root.set_right(None)
-            stop_r = True
-        if calculate_entropy(r) == 0:    
-            root.set_right(None)
+            r_n = Node(None,feat,[tmp_root])
+            root.set_right(r_n)
             stop_r = True
         
         if len(l) == 0:
-            root.set_left(None)
-            stop_l = True
-        if calculate_entropy(l) == 0:
-            root.set_left(None)
+            l_n = Node(None,feat,[tmp_root])
+            root.set_left(l_n)
             stop_l = True
 
-        # print(f"SPLITS\tLEFT:{l}\nRIGHT:{r}\n{stop_r},{stop_l}")
         if not stop_l:
             tmp_root,igr,l_tmp,r_tmp,k = find_split(l)
             
-            # print(f" Information Gain Ratio: {igr} for left node")
+
             if igr == 0:
-                root.set_left(None)
+                l_n = Node(None,feat,l)
+                root.set_left(l_n)
             else:
                 l_n = Node(tmp_root,k,l)
-                self.build_tree(l_n,l_tmp,r_tmp)
+                self.build_tree(l_n,l_tmp,r_tmp,k)
                 root.set_left(l_n)
+
         
-            
+
         if not stop_r:
             tmp_root,igr,l_tmp,r_tmp,k = find_split(r)
 
             
-            print(f" Information Gain Ratio: {igr} for right node")
+
             if igr == 0:
-                root.set_right(None)
+                r_n = Node(None,feat,r)
+                root.set_right(r_n)
             else:
                 r_n = Node(tmp_root,k,r)
-                self.build_tree(r_n,l_tmp,r_tmp)
+                self.build_tree(r_n,l_tmp,r_tmp,k)
                 root.set_right(r_n)
+
             
 
     def predict(self,val,node=None):
@@ -268,17 +270,13 @@ class DecisionTree():
 
 
         if val[node.dim] >= node.val[node.dim]:
-            if node.left == None:
-                return node.predict()
+            if node.left.val == None:
+                return node.left.predict()
             else:
                 return self.predict(val,node=node.left)
         else:
-            if node.right == None:
-                
-                if node.predict() == 1:
-                    return 0
-                else:
-                    return 1
+            if node.right.val == None:
+                return node.right.predict()
             else:
                 return self.predict(val,node=node.right)
 
@@ -288,41 +286,136 @@ def visualize_dataset(ds):
     labels = ["red","blue"]
     for x1,x2,y in ds:
         plt.scatter(x1,x2,c=labels[y])
-    
-    plt.show()
 
+    plt.title("D2 Visualization")
+    plt.xlabel("Feature 0")
+    plt.ylabel("Feature 1")
+    
+    plt.savefig("../D2_Visualization.pdf")
+
+def big_segmentation(data):
+    import random
+    D_32 = []
+    D_32_not = []
+
+    D_128 = []
+    D_128_not = []
+
+    D_512 = []
+    D_512_not = []
+
+    D_2048 = []
+    D_2048_not = []
+    
+    D_8192 = []
+    D_8192_not = []
+
+    tmp_list = []
+    d_copy = data.copy()
+    for i in range(0,8192+1):
+        c = random.choice(data)
+        ind = data.index(c)
+        d_copy[ind] = -1
+        if (i)%32 == 0 and i <= 32:
+            D_32 = tmp_list.copy()
+            tmp_list.append(c)
+            D_32_not = d_copy.copy()
+
+        elif (i)%128 == 0 and i <= 128:
+            D_128 = tmp_list.copy()
+            tmp_list.append(c)
+            D_128_not = d_copy.copy()
+
+        elif (i)%512 == 0 and i <= 512:
+            D_512 = tmp_list.copy()
+            tmp_list.append(c)
+            D_512_not = d_copy.copy()
+
+        elif (i)%2048 == 0 and i <= 2048:
+            D_2048 = tmp_list.copy()
+            tmp_list.append(c)
+            D_2048_not = d_copy.copy()
+
+        elif (i)%8192 == 0 and i <= 8192:
+            D_8192 = tmp_list.copy()
+            tmp_list.append(c)
+            D_8192_not = d_copy.copy()
+
+        else:
+            tmp_list.append(c)
+
+    print(len(D_8192))
+    assert(len(D_32) == 32)
+    assert(len(D_128) == 128)
+    assert(len(D_512) == 512)
+    assert(len(D_2048) == 2048)
+    assert(len(D_8192) == 8192)
+    
+    return (D_32,D_32_not),(D_128,D_128_not),(D_512,D_512_not),(D_2048,D_2048_not),(D_8192,D_8192_not)
+    
+    
+
+def normal_dataset_logic(dataset,key):
+    t = DecisionTree(dataset[key],name=key,force_choice=False,choice_ind=8)
+    print(iterate_tree(t.root))
+    ds = dataset[key]
+    error = 0
+    X = []
+    Y = []
+    for d in ds:
+        pred = t.predict(d)
+        X.append((d[0],d[1]))
+        Y.append(d[2])
+        if pred != d[2]:
+            error+=1
+            print(pred,d)
+    loss = error/len(ds)
+    print(f"LOSS = {loss}")
+    visualize_dataset(ds)
+    from sklearn import tree
+    clf = tree.DecisionTreeClassifier()
+    clf = clf.fit(X,Y)
+    error = 0
+    for d in ds:
+        x = (d[0],d[1])
+        p = clf.predict([x])
+        if p[0] != d[2]:
+            error+=1
+    loss = error/len(ds)
+    print(f"SKLOSS = {loss}")
+    text_representation = tree.export_text(clf)
+    print(text_representation)
+
+def big_dataset_logic(dataset,key):
+    permutations = big_segmentation(dataset[key])
+    x_axis = [32,128,512,2048,8192]
+    y_axis = []
+    for s in permutations:
+        error = 0
+
+        training,testing = s
+        t = DecisionTree(training,name=key)
+        for p in testing:
+            if p == -1:
+                continue
+        
+            pred = t.predict(p)
+            if pred != p[2]:
+                error+=1
+        loss = error/len(testing)
+        y_axis.append(loss*100)
+        print(f"LOSS for D_{len(training)} = {loss}")
+    
+    plt.plot(x_axis,y_axis)
+    plt.title("Learning Curve")
+    plt.xlabel("Points in Training Set")
+    plt.ylabel("Percentage of Miss Classifications")
+    plt.savefig("../learning_curve.pdf")
 
 if __name__ == "__main__":
     path = "../data"
     dataset = walk_all_files(path)
     for key in dataset.keys():
-        if "bad" in key:
-            t = DecisionTree(dataset[key],name=key,force_choice=False,choice_ind=8)
-            print(iterate_tree(t.root))
-            ds = dataset[key]
-            error = 0
-            X = []
-            Y = []
-            for d in ds:
-                pred = t.predict(d)
-                X.append((d[0],d[1]))
-                Y.append(d[2])
-                if pred != d[2]:
-                    error+=1
-                    print(pred,d)
-            loss = error/len(ds)
-            print(f"LOSS = {loss}")
-            # visualize_dataset(ds)
-            from sklearn import tree
-            clf = tree.DecisionTreeClassifier()
-            clf = clf.fit(X,Y)
-            error = 0
-            for d in ds:
-                x = (d[0],d[1])
-                p = clf.predict([x])
-                if p[0] != d[2]:
-                    error+=1
-            loss = error/len(ds)
-            print(f"SKLOSS = {loss}")
-            text_representation = tree.export_text(clf)
-            print(text_representation)
+        if "big" in key:
+            # normal_dataset_logic(dataset,key)
+            big_dataset_logic(dataset,key)
