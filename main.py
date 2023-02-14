@@ -191,7 +191,7 @@ if __name__ == "__main__":
     path = "./data"
     dataset = walk_all_files(path)
     for key in dataset.keys():
-        if "bad" in key:
+        if "D1" in key:
             normal_dataset_logic(dataset,key)
             # big_dataset_logic(dataset,key)
             # sklearn_tree_analysis(dataset,key)
