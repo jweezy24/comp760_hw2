@@ -16,7 +16,7 @@ def visualize_dataset(ds):
     plt.xlabel("Feature 0")
     plt.ylabel("Feature 1")
     
-    plt.savefig("../Question2.pdf")
+    plt.savefig("./Question2.pdf")
 
 def big_segmentation(data):
     import random
@@ -104,7 +104,7 @@ def visualize_boundaries(t,data,plot_title=""):
     plt.title(f"D_{plot_title} Boundry")   
     plt.xlabel("Feature 0")
     plt.ylabel("Feature 1") 
-    plt.savefig(f"../{plot_title}.png")
+    plt.savefig(f"./{plot_title}.png")
 
 def normal_dataset_logic(dataset,key):
     t = DecisionTree(dataset[key],name=key,force_choice=False,choice_ind=2)
@@ -156,7 +156,7 @@ def sklearn_tree_analysis(dataset,key):
     plt.title("Learning Curve Sklearn")
     plt.xlabel("Points in Training Set")
     plt.ylabel("Percentage of Miss Classifications")
-    plt.savefig("../learning_curve_sklearn.pdf")
+    plt.savefig("./learning_curve_sklearn.pdf")
 
 def big_dataset_logic(dataset,key):
     permutations = big_segmentation(dataset[key])
@@ -185,7 +185,7 @@ def big_dataset_logic(dataset,key):
     plt.title("Learning Curve")
     plt.xlabel("Points in Training Set")
     plt.ylabel("Percentage of Miss Classifications")
-    plt.savefig("../learning_curve.pdf")
+    plt.savefig("./learning_curve.pdf")
 
 if __name__ == "__main__":
     path = "./data"
